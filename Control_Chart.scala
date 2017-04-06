@@ -1,6 +1,6 @@
 //Entry criteria for the script is data with Sample size, Mean, Range
-val process_data = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("/user/hive/sample/processed_data.csv")
-val process_chart = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("/user/hive/sample/sample_size.csv")
+val process_data = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("../processed_data.csv")
+val process_chart = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("../sample_size.csv")
 
 
 val n_s1 = process_data.select($"sample".cast("int"))
