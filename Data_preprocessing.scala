@@ -7,5 +7,5 @@ val colum_agg = "YR"
 val colum = "IP" //provide the column you want to observe
 val df1 = df.groupBy(colum_agg).agg(max("IP").alias("MAX"),min("IP").alias("MIN"),round(avg(colum),2).alias("MEAN"),count(colum).alias("sample"))
 val data = df1.withColumn("RANGE",round(($"MAX" - $"MIN"),2))
-
-data.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../data/processed_data.csv")
+//output save as part-m-00000. Rename it as processed_data.csv for execute control_chart.scala
+data.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../data/")

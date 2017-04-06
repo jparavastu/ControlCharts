@@ -72,10 +72,14 @@ val rUCL = rsample * D4
 
 val xchart = process_data.withColumn("LCL", round(lit(xLCL),2)).withColumn("UCL", round(lit(xUCL),2))
 val xbar_chart = xchart.drop(col("RANGE"))
-//xbar_chart.repartition(1).write.mode("overwrite").json("/user/hive/sample/xbar")
-xbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/xbar1")
+/* -- If output required in JSON format -- 
+xbar_chart.repartition(1).write.mode("overwrite").json("../xbar")
+*/
+xbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../xbar")
 
 val rchart = process_data.withColumn("LCL",round(lit(rLCL),2)).withColumn("UCL",round(lit(rUCL),2)).withColumn("R-Bar", round(lit(rsample),2))
 val rbar_chart = rchart.drop(col("MEAN"))
-//rbar_chart.repartition(1).write.mode("overwrite").json("/user/hive/sample/rbar")
-rbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/rbar1")
+/* -- If output required in JSON format -- 
+//rbar_chart.repartition(1).write.mode("overwrite").json("../rbar")
+*/
+rbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../rbar")
