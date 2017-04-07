@@ -1,13 +1,15 @@
 //Entry criteria for the script is data with Sample size, Mean, Range
-val process_data = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("../processed_data.csv")
-val process_chart = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("../sample_size.csv")
+val data = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("/user/hive/sample/processed_testdata.csv")
+val process_chart = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").load("/user/hive/sample/sample_size.csv")
 
 
-val n_s1 = process_data.select($"sample".cast("int"))
+//val n_s1 = data.select($"sample".cast("int"))
+
+val n_s1 = data.select($"sample".cast("int"))
 val n_s2 = n_s1.agg(avg("sample"))
 val n_s3 = n_s2.rdd.map(r => r(0)).collect()
 val n_s4 = n_s3(0)
-val n = n_s4.asInstanceOf[Number].integerValue
+val n = n_s4.asInstanceOf[Number].intValue
 
 val test = process_chart.filter($"Sample_Size" === n)
 
@@ -46,40 +48,51 @@ val B4_s2 = B4_s1.select("B4").rdd.map(r => r(0)).collect()
 val B4_s3 = B4_s2(0)
 val B4 = B4_s3.asInstanceOf[Number].doubleValue
 //mean transformation
-val temp = process_data.agg(sum("MEAN"))
-val temp1 = temp.select("sum(MEAN)").rdd.map(r => r(0)).collect()
+val temp = data.agg(avg("MEAN"))
+val temp1 = temp.select("avg(MEAN)").rdd.map(r => r(0)).collect()
 val temp2 = temp1(0)
-val temp3 = temp2.asInstanceOf[Number].doubleValue
-
-val tot_row = process_data.count()
-val sample = temp3/tot_row
+val sample = temp2.asInstanceOf[Number].doubleValue
 
 //range
-val rtemp = process_data.agg(sum("RANGE"))
-val rtemp1 = rtemp.select("sum(RANGE)").rdd.map(r => r(0)).collect()
+val rtemp = data.agg(avg("RANGE"))
+val rtemp1 = rtemp.select("avg(RANGE)").rdd.map(r => r(0)).collect()
 val rtemp2 = rtemp1(0)
-val rtemp3 = rtemp2.asInstanceOf[Number].doubleValue
+val rsample = rtemp2.asInstanceOf[Number].doubleValue
 
-val rsample = rtemp3/tot_row
+//Standard_Deviation
+val stemp = data.agg(avg("STDDEV"))
+val stemp1 = stemp.select("avg(STDDEV)").rdd.map(r => r(0)).collect()
+val stemp2 = stemp1(0)
+val ssample = stemp2.asInstanceOf[Number].doubleValue
+
+/* xbar -R chart*/
 
 //X-Bar chart UCL and LCL
-val xLCL = sample - (rsample * A2)
-val xUCL = sample + (rsample * A2)
+val LCLrx = sample - (rsample * A2)
+val UCLrx = sample + (rsample * A2)
+val xrchart = data.withColumn("LCL", round(lit(LCLrx),2)).withColumn("UCL", round(lit(UCLrx),2)).withColumn("Mean", round(lit(sample),2))
+val xrbar_chart = xrchart.drop(col("RANGE")).drop(col("MEAN"))
+xrbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/xrchart/xbar")
+//xbar_chart.repartition(1).write.mode("overwrite").json("/user/hive/sample/xbar")
 
 //R-Chart UCL and LCL
-val rLCL = D3
-val rUCL = rsample * D4
-
-val xchart = process_data.withColumn("LCL", round(lit(xLCL),2)).withColumn("UCL", round(lit(xUCL),2))
-val xbar_chart = xchart.drop(col("RANGE"))
-/* -- If output required in JSON format -- 
-xbar_chart.repartition(1).write.mode("overwrite").json("../xbar")
-*/
-xbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../xbar")
-
-val rchart = process_data.withColumn("LCL",round(lit(rLCL),2)).withColumn("UCL",round(lit(rUCL),2)).withColumn("R-Bar", round(lit(rsample),2))
+val LCLr = rsample * D3
+val UCLr = rsample * D4
+val rchart = data.withColumn("LCL",round(lit(LCLr),2)).withColumn("UCL",round(lit(UCLr),2)).withColumn("R-Bar", round(lit(rsample),2))
 val rbar_chart = rchart.drop(col("MEAN"))
-/* -- If output required in JSON format -- 
-//rbar_chart.repartition(1).write.mode("overwrite").json("../rbar")
-*/
-rbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("../rbar")
+rbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/xrchart/rbar")
+//rbar_chart.repartition(1).write.mode("overwrite").json("/user/hive/sample/rbar")
+
+/* xbar -R chart*/
+val UCLs = B4 * ssample
+val LCLs = B3 * ssample
+val schart = data.withColumn("LCL",round(lit(LCLs),2)).withColumn("UCL",round(lit(UCLs),2)).withColumn("S-bar", round(lit(rsample),2))
+val sbar_chart = rchart.drop(col("MEAN")).drop(col("RANGE"))
+sbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/xschart/sbar")
+
+//A3 is a control chart constant that depends on the subgroup size.
+val UCLsx = sample + (A3 * ssample)
+val LCLsx = sample - (A3 * ssample)
+val xschart = data.withColumn("LCL", round(lit(LCLsx),2)).withColumn("UCL", round(lit(UCLsx),2)).withColumn("Mean", round(lit(sample),2))
+val xsbar_chart = xchart.drop(col("RANGE")).drop(col("MEAN"))
+xsbar_chart.repartition(1).write.format("com.databricks.spark.csv").mode("overwrite").option("header", "true").save("/user/hive/sample/xschart/xbar")
