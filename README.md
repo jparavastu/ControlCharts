@@ -2,7 +2,9 @@
 
 Control charts, also known as Shewhart charts (after Walter A. Shewhart) or process-behavior charts, are a statistical process control tool used to determine if a manufacturing or business process is in a state of control.
 
-This code helps to create x-bar and R chart and x-bar and s chart on a time-series data.
+This code helps to create below charts on time-series data, 
+1. x-bar and R chart
+2. x-bar and s chart 
 
 ## Prerequisites:
 #### Using with Spark shell: 
